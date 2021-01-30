@@ -1,0 +1,192 @@
+Function MATCHES(lookup_values As Variant, lookup_array As Variant)
+    'Finds all row matches within array.
+    'Similar syntax to MATCH, but only with exact matching.
+    
+    'Initialize variables.
+    Dim i As Long
+    Dim j As Long
+    Dim n As Long
+    n = 0
+    Dim dimension As Long
+    Dim answer() As Variant
+    
+    'Convert inputs to arrays.
+    lookup_values = c2array(lookup_values)
+    lookup_array = c2array(lookup_array)
+    
+    'Convert array to column vector if is a row vector.
+    If UBound(lookup_array, 1) = 1 Then
+        lookup_array = transpose(lookup_array)
+    End If
+
+    'Search for matches and append the row indices to the answer.
+    For Each lookup_value In lookup_values
+        For i = LBound(lookup_array, 1) To UBound(lookup_array, 1)
+            For j = LBound(lookup_array, 2) To UBound(lookup_array, 2)
+                If lookup_value = lookup_array(i, j) Then
+                    n = n + 1
+                    ReDim Preserve answer(1 To n)
+                    answer(n) = i
+                End If
+            Next j
+        Next i
+    Next lookup_value
+    
+    'If no matches were found, return zero.
+    If n = 0 Then
+        MATCHES = 0
+    Else
+        MATCHES = answer
+    End If
+    
+End Function
+
+Function INDICES(lookup_array As Variant, rowIDs As Variant, Optional ByVal colIDs As Variant = 0)
+    'Multiple indexing. Same syntax as INDEX, same functionality, but can output arrays.
+
+    'Define variables.
+    Dim i As Long
+    Dim j As Long
+    Dim n As Long
+    Dim answer() As Variant
+
+    'Convert inputs to arrays.
+    lookup_array = c2array(lookup_array)
+    rowIDs = c2array(rowIDs)
+    colIDs = c2array(colIDs)
+    
+    'Force vectors to be column vectors.
+    If UBound(rowIDs, 1) = 1 Then
+        rowIDs = transpose(rowIDs)
+    End If
+    If UBound(colIDs, 1) = 1 Then
+        colIDs = transpose(colIDs)
+    End If
+
+    'Get # of rows, handling zero case.
+    Dim nRows As Long
+    If rowIDs(1, 1) = 0 Then
+        nRows = UBound(lookup_array, 1) - LBound(lookup_array, 1) + 1
+        ReDim rowIDs(1 To nRows, 1 To 1) As Long
+        For i = 1 To nRows
+            rowIDs(i, 1) = i
+        Next i
+    Else
+        nRows = UBound(rowIDs) - LBound(rowIDs) + 1
+    End If
+
+    'Get # of columns, handling default case.
+    Dim nCols As Long
+    If colIDs(1, 1) = 0 Then
+        nCols = UBound(lookup_array, 2) - LBound(lookup_array, 2) + 1
+        ReDim colIDs(1 To nCols, 1 To 1) As Long
+        For i = 1 To nCols
+            colIDs(i, 1) = i
+        Next i
+    Else
+        nCols = UBound(colIDs) - LBound(colIDs) + 1
+    End If
+    
+    'Re-dimension the output array.
+    ReDim answer(1 To nRows, 1 To nCols)
+    
+    'Fill in the output array.
+    For i = 1 To nRows
+        For j = 1 To nCols
+            answer(i, j) = lookup_array(rowIDs(i, 1), colIDs(j, 1))
+        Next j
+    Next i
+    
+    INDICES = answer
+            
+End Function
+
+Private Function c2array(x As Variant) As Variant
+    ' Converts any type of input to a 2d array.
+    
+    'Initialize variables.
+    Dim answer() As Variant
+    Dim dimension As Long
+    Dim Val As Variant
+    Dim i As Long
+    i = 1
+    
+    'Check for range.
+    If TypeName(x) = "Range" Then
+        'If one cell, need to handle differently.
+        If x.Cells.Count = 1 Then
+            ReDim answer(1 To 1, 1 To 1)
+            answer(1, 1) = x
+        Else
+            answer = x.Value2
+        End If
+    'Check for array.
+    ElseIf IsArray(x) Then
+        'If it is one-dimensional, convert to 2D.
+        dimension = getDimension(x)
+        If dimension = 1 Then
+            ReDim answer(1 To UBound(x) - LBound(x) + 1, 1 To 1)
+            For Each Val In answer
+                answer(i, 1) = x(LBound(x) - 1 + i)
+                i = i + 1
+            Next Val
+        Else
+            'If not one dimensional, answer is just the input.
+            answer = x
+        End If
+    Else
+        'Input is just a value. Create a 2D, 1x1 array.
+        ReDim answer(1 To 1, 1 To 1) As Variant
+        answer(1, 1) = x
+    End If
+    
+    c2array = answer
+    
+End Function
+
+Private Function transpose(x As Variant) As Variant
+    'Transposes a 2D array.
+    
+    'Initialize variables.
+    Dim rows As Long
+    Dim cols As Long
+    Dim i As Long
+    Dim j As Long
+    Dim answer() As Variant
+    
+    'Get current number of rows and columns.
+    rows = UBound(x, 1) - LBound(x, 1) + 1
+    cols = UBound(x, 2) - LBound(x, 2) + 1
+    
+    'Define dimension of answer as transposed.
+    ReDim answer(1 To cols, 1 To rows)
+    
+    'Fill in answer.
+    For i = 1 To rows
+        For j = 1 To cols
+            answer(j, i) = x(i, j)
+        Next j
+    Next i
+    
+    transpose = answer
+    
+End Function
+
+Private Function getDimension(x As Variant) As Long
+    ' Gets the dimension of an array.
+    ' From the internets.
+    
+    On Error GoTo Err
+    Dim i As Long
+    Dim tmp As Long
+    i = 0
+    Do While True
+        i = i + 1
+        tmp = UBound(x, i)
+    Loop
+    
+Err:
+
+    getDimension = i - 1
+    
+End Function
